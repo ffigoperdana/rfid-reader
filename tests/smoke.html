@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <title>RFID Pair Smoke Test</title>
+    <style>
+      body { font-family: sans-serif; padding: 20px; }
+      iframe { width: 1200px; height: 800px; border: 1px solid #ccc; }
+      .pass { color: #087a52; }
+      .fail { color: #b42318; }
+    </style>
+  </head>
+  <body>
+    <h1 id="status">RUNNING</h1>
+    <ol id="results"></ol>
+    <iframe id="app" title="Aplikasi yang diuji"></iframe>
+    <script>
+      const STORAGE_KEY = "rfid-pair-session-v1";
+      const frame = document.querySelector("#app");
+      const results = document.querySelector("#results");
+      let failures = 0;
+
+      function wait(milliseconds) {
+        return new Promise((resolve) => setTimeout(resolve, milliseconds));
+      }
+
+      function assert(condition, message) {
+        const item = document.createElement("li");
+        item.textContent = `${condition ? "PASS" : "FAIL"}: ${message}`;
+        item.className = condition ? "pass" : "fail";
+        results.append(item);
+        if (!condition) failures += 1;
+      }
+
+      function loadFrame(url) {
+        return new Promise((resolve) => {
+          frame.addEventListener("load", resolve, { once: true });
+          frame.src = url;
+        });
+      }
+
+      function pressEnter(input, value) {
+        input.value = value;
+        input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+      }
+
+      function updateEditorInput(input, value) {
+        input.value = value;
+        input.dispatchEvent(new InputEvent("input", { inputType: "insertText", bubbles: true }));
+      }
+
+      async function run() {
+        localStorage.removeItem(STORAGE_KEY);
+        await loadFrame(`/?smoke=${Date.now()}`);
+        let doc = frame.contentDocument;
+        let win = frame.contentWindow;
+
+        assert(!doc.querySelector("#setupView").hidden, "halaman setup tampil saat sesi baru");
+        assert(doc.querySelector("#namesInput").value.trim().split(/\r?\n/).length === 30, "30 nama bawaan tersedia");
+        assert(doc.querySelector("#nameCount").textContent === "30 nama", "penghitung nama benar");
+
+        doc.querySelector("#setupForm").requestSubmit();
+        await wait(80);
+        assert(!doc.querySelector("#scannerView").hidden, "tombol Mulai membuka mode scan");
+        assert(doc.querySelector("#scannerTitle").textContent === "maulida.afifah", "urutan dimulai dari nama pertama");
+
+        const scanInput = doc.querySelector("#scanInput");
+        pressEnter(scanInput, "00000001");
+        await wait(340);
+        let saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        assert(saved.records[0] === "00000001", "scan Enter menyimpan UID sebagai teks beserta nol di depan");
+        assert(doc.querySelector("#scannerTitle").textContent === "wahid.fathurrohman", "scan sukses otomatis maju ke nama kedua");
+
+        pressEnter(scanInput, "00000001");
+        await wait(30);
+        assert(!doc.querySelector("#scanError").hidden, "UID duplikat ditolak");
+        assert(doc.querySelector("#scannerTitle").textContent === "wahid.fathurrohman", "UID duplikat tidak memajukan antrean");
+
+        doc.querySelector("#undoButton").click();
+        await wait(30);
+        saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        assert(saved.records[0] === "", "undo mengosongkan scan terakhir");
+        assert(doc.querySelector("#scannerTitle").textContent === "maulida.afifah", "undo kembali ke nama sebelumnya");
+
+        const activeInput = doc.querySelector("#scanInput");
+        activeInput.value = "00000011";
+        activeInput.dispatchEvent(new InputEvent("input", { inputType: "insertFromPaste", bubbles: true }));
+        await wait(250);
+        saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        assert(saved.records[0] === "00000011", "reader tanpa Enter diproses setelah jeda singkat");
+
+        doc.querySelector("#pauseButton").click();
+        const pausedInput = doc.querySelector("#scanInput");
+        pressEnter(pausedInput, "00000002");
+        await wait(30);
+        saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        assert(saved.records[1] === "", "mode jeda mengabaikan input reader");
+        doc.querySelector("#pauseButton").click();
+        await wait(320);
+        pressEnter(doc.querySelector("#scanInput"), "00000002");
+        await wait(330);
+        assert(doc.querySelector("#scannerTitle").textContent === "jilahan.jahroo", "Mulai lagi melanjutkan scan");
+
+        doc.querySelector("#skipButton").click();
+        assert(doc.querySelector("#scannerTitle").textContent === "aditya.putra", "Lewati dulu maju satu nama tanpa mengisi");
+
+        doc.querySelector("#openEditorButton").click();
+        await wait(30);
+        assert(!doc.querySelector("#editorView").hidden, "editor CSV dapat dibuka kapan saja");
+        const editorInputs = [...doc.querySelectorAll(".rfid-edit-input")];
+        assert(editorInputs.length === 30, "editor mempertahankan seluruh 30 nama");
+
+        editorInputs.forEach((input, index) => updateEditorInput(input, String(index + 1).padStart(8, "0")));
+        updateEditorInput(editorInputs[1], "00000001");
+        await wait(20);
+        assert(!doc.querySelector("#editorAlert").hidden, "editor menandai kode duplikat");
+        assert(doc.querySelector("#downloadCsvButton").disabled, "ekspor diblokir saat masih ada duplikat");
+
+        updateEditorInput(editorInputs[1], "00000002");
+        await wait(20);
+        assert(doc.querySelector("#editorAlert").hidden, "peringatan hilang setelah duplikat diperbaiki");
+
+        let capturedBlob = null;
+        win.URL.createObjectURL = (blob) => {
+          capturedBlob = blob;
+          return "blob:smoke-test";
+        };
+        win.URL.revokeObjectURL = () => {};
+        win.HTMLAnchorElement.prototype.click = function () {};
+        doc.querySelector("#downloadCsvButton").click();
+        await wait(20);
+        const csv = (await capturedBlob.text()).replace(/^\uFEFF/, "");
+        const lines = csv.split("\r\n");
+        assert(lines.length === 31, "CSV berisi satu header dan 30 baris data");
+        assert(lines[0] === '"nama","kode rfid"', "header CSV sesuai format nama dan kode RFID");
+        assert(lines[1] === '"maulida.afifah","00000001"', "CSV menjaga urutan dan nol di depan UID");
+        assert(lines[30].startsWith('"indriyanti",'), "nama terakhir tetap berada di baris terakhir");
+
+        doc.querySelector("#backToScannerButton").click();
+        await wait(30);
+        assert(!doc.querySelector("#completionCard").hidden, "semua data terisi menampilkan status selesai");
+
+        await loadFrame(`/?reload=${Date.now()}`);
+        doc = frame.contentDocument;
+        assert(!doc.querySelector("#scannerView").hidden, "refresh memulihkan sesi yang tersimpan");
+        assert(!doc.querySelector("#completionCard").hidden, "status selesai tetap tersimpan setelah refresh");
+
+        document.querySelector("#status").textContent = failures ? `FAIL ${failures}` : "PASS";
+        document.body.dataset.result = failures ? "FAIL" : "PASS";
+      }
+
+      run().catch((error) => {
+        failures += 1;
+        assert(false, `${error.name}: ${error.message}`);
+        document.querySelector("#status").textContent = `FAIL ${failures}`;
+        document.body.dataset.result = "FAIL";
+      });
+    </script>
+  </body>
+</html>

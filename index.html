@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0d6b5d" />
+    <meta
+      name="description"
+      content="Aplikasi lokal sederhana untuk memasangkan nama dengan kode kartu RFID."
+    />
+    <title>RFID Pair — Pencatat Kartu Lokal</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="page-glow page-glow--one" aria-hidden="true"></div>
+    <div class="page-glow page-glow--two" aria-hidden="true"></div>
+
+    <main class="app-shell">
+      <header class="topbar">
+        <button class="brand" id="brandButton" type="button" aria-label="Kembali ke halaman awal">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" role="img">
+              <path d="M10.4 11.3a6.7 6.7 0 0 0 0 9.4" />
+              <path d="M6.5 7.4a12.1 12.1 0 0 0 0 17.2" />
+              <path d="M21.6 11.3a6.7 6.7 0 0 1 0 9.4" />
+              <path d="M25.5 7.4a12.1 12.1 0 0 1 0 17.2" />
+              <circle cx="16" cy="16" r="2.5" />
+            </svg>
+          </span>
+          <span>
+            <strong>RFID Pair</strong>
+            <small>Local card mapper</small>
+          </span>
+        </button>
+
+        <div class="local-badge">
+          <span class="local-badge__dot"></span>
+          Tersimpan lokal
+        </div>
+      </header>
+
+      <section class="view setup-view" id="setupView" aria-labelledby="setupTitle">
+        <div class="hero-copy">
+          <span class="eyebrow">RFID ASSIGNMENT TOOL</span>
+          <h1 id="setupTitle">Pasangkan kartu ke nama,<br />satu per satu.</h1>
+          <p>
+            Tempel daftar nama, tekan mulai, lalu tap kartu sesuai urutan. Tidak ada data yang
+            dikirim keluar dari browser ini.
+          </p>
+        </div>
+
+        <form class="setup-card" id="setupForm">
+          <div class="setup-card__main">
+            <div class="field-heading">
+              <div>
+                <label for="namesInput">Daftar nama</label>
+                <p>Satu nama per baris. Urutan akan dipertahankan.</p>
+              </div>
+              <span class="count-pill" id="nameCount">0 nama</span>
+            </div>
+
+            <div class="textarea-wrap">
+              <span class="textarea-wrap__gutter" aria-hidden="true"></span>
+              <textarea
+                id="namesInput"
+                rows="15"
+                spellcheck="false"
+                autocomplete="off"
+                aria-describedby="nameHelp"
+              ></textarea>
+            </div>
+            <p class="field-help" id="nameHelp">Baris kosong akan dilewati otomatis.</p>
+          </div>
+
+          <aside class="setup-card__aside">
+            <div class="aside-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48">
+                <rect x="12" y="9" width="24" height="30" rx="5" />
+                <path d="M20 19a6 6 0 0 0 0 10M16.5 15.5a11 11 0 0 0 0 17" />
+                <circle cx="25.5" cy="24" r="2.2" />
+              </svg>
+            </div>
+            <div class="aside-copy">
+              <span>LANGKAH BERIKUTNYA</span>
+              <strong>Siapkan reader USB</strong>
+              <p>Pastikan lampu reader menyala dan jendela browser tetap aktif.</p>
+            </div>
+
+            <div class="resume-note" id="resumeNote" hidden>
+              <span>Ada progres tersimpan</span>
+              <strong id="resumeText">0 dari 0 selesai</strong>
+            </div>
+
+            <button class="button button--primary button--large" id="startButton" type="submit">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m9 7 8 5-8 5V7Z" />
+              </svg>
+              <span id="startButtonText">Mulai scan</span>
+            </button>
+          </aside>
+        </form>
+
+        <div class="privacy-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 10V8a5 5 0 0 1 10 0v2" />
+            <rect x="5" y="10" width="14" height="10" rx="3" />
+            <path d="M12 14v2" />
+          </svg>
+          <span><strong>Aman untuk data internal.</strong> Semua progres hanya tersimpan di browser perangkat ini.</span>
+        </div>
+      </section>
+
+      <section class="view scanner-view" id="scannerView" aria-labelledby="scannerTitle" hidden>
+        <div class="view-toolbar">
+          <button class="button button--ghost" id="backToSetupButton" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            Daftar nama
+          </button>
+          <div class="toolbar-actions">
+            <button class="button button--ghost" id="pauseButton" type="button">
+              <svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 7v10M15 7v10" />
+              </svg>
+              <span>Jeda</span>
+            </button>
+            <button class="button button--dark" id="openEditorButton" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h16M4 12h16M4 18h10" />
+              </svg>
+              Edit data
+            </button>
+          </div>
+        </div>
+
+        <div class="scanner-layout">
+          <div class="scanner-main">
+            <article class="scan-card">
+              <div class="progress-heading">
+                <div>
+                  <span class="eyebrow">PROGRES SCAN</span>
+                  <strong id="progressLabel">0 dari 0</strong>
+                </div>
+                <span id="progressPercent">0%</span>
+              </div>
+              <div class="progress-track" aria-hidden="true">
+                <span id="progressBar"></span>
+              </div>
+
+              <div class="current-person" id="activeScanPanel">
+                <span class="current-person__label" id="currentStepLabel">KARTU UNTUK</span>
+                <h2 id="scannerTitle">—</h2>
+                <p id="currentPersonHint">Tempelkan kartu milik nama di atas ke reader.</p>
+              </div>
+
+              <label class="reader-input" id="readerInputWrap" for="scanInput">
+                <span class="reader-input__status" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </span>
+                <span class="reader-input__copy">
+                  <strong id="readerStatusTitle">Siap membaca kartu</strong>
+                  <small id="readerStatusText">Klik area ini bila reader belum merespons</small>
+                </span>
+                <input
+                  id="scanInput"
+                  type="text"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                  aria-label="Input kode RFID"
+                />
+                <kbd>ENTER</kbd>
+              </label>
+
+              <div class="scan-error" id="scanError" role="alert" hidden></div>
+
+              <div class="scan-actions">
+                <button class="button button--ghost" id="undoButton" type="button" disabled>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8H5v-4M5.5 8.5A8 8 0 1 1 4 14" /></svg>
+                  Batalkan scan terakhir
+                </button>
+                <button class="button button--ghost" id="skipButton" type="button">
+                  Lewati dulu
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+                </button>
+              </div>
+            </article>
+
+            <article class="completion-card" id="completionCard" hidden>
+              <div class="completion-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48"><path d="m13 24 7 7 15-16" /></svg>
+              </div>
+              <span class="eyebrow">SESI SELESAI</span>
+              <h2 id="completionTitle">Semua kartu sudah dipasangkan.</h2>
+              <p id="completionText">Periksa kembali datanya sebelum mengunduh CSV.</p>
+              <div class="completion-card__actions">
+                <button class="button button--primary" id="reviewDataButton" type="button">Lihat & edit data</button>
+                <button class="button button--ghost" id="fillMissingButton" type="button" hidden>Isi data kosong</button>
+              </div>
+            </article>
+
+            <div class="reader-tip">
+              <span class="reader-tip__icon">i</span>
+              <p>
+                Reader biasanya bekerja seperti keyboard. Jika tidak terbaca, klik kotak “Siap membaca kartu”,
+                lalu tap ulang kartunya.
+              </p>
+            </div>
+          </div>
+
+          <aside class="queue-card">
+            <div class="queue-card__heading">
+              <div>
+                <span>URUTAN NAMA</span>
+                <strong id="queueSummary">0 belum diisi</strong>
+              </div>
+              <span class="queue-card__count" id="queueCount">0</span>
+            </div>
+            <div class="queue-list" id="queueList" role="list"></div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="view editor-view" id="editorView" aria-labelledby="editorTitle" hidden>
+        <div class="view-toolbar">
+          <button class="button button--ghost" id="backToScannerButton" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            Kembali ke scan
+          </button>
+          <div class="toolbar-actions">
+            <button class="button button--ghost" id="copyCsvButton" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <rect x="8" y="8" width="11" height="11" rx="2" />
+                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+              </svg>
+              Salin CSV
+            </button>
+            <button class="button button--primary" id="downloadCsvButton" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4v11M8 11l4 4 4-4M5 20h14" />
+              </svg>
+              Download CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="editor-heading">
+          <div>
+            <span class="eyebrow">CSV PREVIEW</span>
+            <h1 id="editorTitle">Periksa data RFID</h1>
+            <p>Klik kode RFID untuk memperbaiki isinya. Perubahan tersimpan otomatis.</p>
+          </div>
+          <div class="editor-stats">
+            <div><strong id="editorFilledCount">0</strong><span>Terisi</span></div>
+            <div><strong id="editorEmptyCount">0</strong><span>Kosong</span></div>
+          </div>
+        </div>
+
+        <div class="editor-alert" id="editorAlert" role="alert" hidden></div>
+
+        <div class="table-card">
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">No.</th>
+                  <th scope="col">Nama</th>
+                  <th scope="col">Kode RFID</th>
+                  <th scope="col"><span class="sr-only">Status</span></th>
+                </tr>
+              </thead>
+              <tbody id="editorTableBody"></tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span id="autosaveStatus"><span></span>Tersimpan otomatis</span>
+            <button class="text-button text-button--danger" id="resetSessionButton" type="button">Reset seluruh sesi</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+      <span class="toast__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-8" /></svg>
+      </span>
+      <span id="toastText">Data tersimpan</span>
+    </div>
+
+    <dialog class="confirm-dialog" id="confirmDialog">
+      <form method="dialog">
+        <div class="confirm-dialog__icon" aria-hidden="true">!</div>
+        <h2 id="confirmTitle">Konfirmasi</h2>
+        <p id="confirmMessage">Apakah kamu yakin?</p>
+        <div class="confirm-dialog__actions">
+          <button class="button button--ghost" id="confirmCancelButton" value="cancel">Batal</button>
+          <button class="button button--danger" id="confirmAcceptButton" value="confirm">Lanjutkan</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="script.js"></script>
+  </body>
+</html>
